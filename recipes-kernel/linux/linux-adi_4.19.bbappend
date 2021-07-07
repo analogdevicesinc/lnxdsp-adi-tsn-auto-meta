@@ -8,5 +8,5 @@ SRC_URI_append = "\
             file://0001-sc59x-hrtimer-support.patch \
             file://SRAM.cfg \
             file://RemoteProc.cfg \
-            file://0001-IOCTL-to-get-sram-address.patch \
+            file://0001-Enable-sram-mmap.patch \
 "

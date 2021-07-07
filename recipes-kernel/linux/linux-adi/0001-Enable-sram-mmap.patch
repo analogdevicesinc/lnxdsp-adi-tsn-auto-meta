@@ -1,0 +1,11 @@
+diff --git a/arch/arm/boot/dts/sc594-som-ezkit.dts b/arch/arm/boot/dts/sc594-som-ezkit.dts
+index 2c4a0901a070..69e09a6ac2ae 100644
+--- a/arch/arm/boot/dts/sc594-som-ezkit.dts
++++ b/arch/arm/boot/dts/sc594-som-ezkit.dts
+@@ -423,5 +423,5 @@
+ };
+ 
+ &sram_mmap {
+-	status = "disabled";
++	status = "okay";
+ };
