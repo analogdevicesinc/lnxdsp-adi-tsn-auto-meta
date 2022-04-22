@@ -1,8 +1,8 @@
 diff --git a/arch/arm/boot/dts/sc594-som-ezkit.dts b/arch/arm/boot/dts/sc594-som-ezkit.dts
-index 25acefc408c2..9c1ac91c47b5 100644
+index 25acefc408c2..b571db1b5509 100644
 --- a/arch/arm/boot/dts/sc594-som-ezkit.dts
 +++ b/arch/arm/boot/dts/sc594-som-ezkit.dts
-@@ -51,24 +51,22 @@
+@@ -51,14 +51,13 @@
  			              <&ssw0 4 GPIO_ACTIVE_LOW>;	/* SPI2D2_D3_EN */
  		};
  
@@ -13,38 +13,24 @@ index 25acefc408c2..9c1ac91c47b5 100644
 -			en-pins = <&ssw1 1 GPIO_ACTIVE_LOW>;	/* PUSHBUTTON_EN
 -			button_gpio = <48>; /* PD_00
 -			led_gpio = <35>; /* PC_03 / LED9 / LED1_KIT
-+			en-pins = <&ssw1 1 GPIO_ACTIVE_LOW>;/* PUSHBUTTON_EN */
++			en-pins = <&ssw1 1 GPIO_ACTIVE_HIGH>;	/* PUSHBUTTON_EN */
 +			button_gpio = <50>; /* PD_00 */
 +			led_gpio = <35>; /* PC_03 / LED9 / LED1_KIT */
  		};
 -*/
  
  /* This also appears to interfere with the OSPI somehow...
--   possible trace noise/interference?
-+/*  possible trace noise/interference? */
- 		button1: button@1 {
- 			compatible = "adi,button-led";
--			en-pins = <&ssw1 1 GPIO_ACTIVE_HIGH>; /* PUSHBUTTON_EN
--			button_gpio = <112>; /* PH_00
--			led_gpio = <34>; /* PC_02 / LED8 / LED2_KIT
-+			en-pins = <&ssw1 1 GPIO_ACTIVE_HIGH>; /* PUSHBUTTON_EN */
-+			button_gpio = <112>; /* PH_00 */
-+			led_gpio = <34>; /* PC_02 / LED8 / LED2_KIT */
- 		};
--*/
- 
- 		core1-rproc@0x3108c000 {
- 			compatible = "adi,remoteproc";
+    possible trace noise/interference?
 diff --git a/drivers/net/phy/dp83867.c b/drivers/net/phy/dp83867.c
-index 3aa1ae211f5f..d03db6405499 100644
+index 3aa1ae211f5f..d8a24bfb9928 100644
 --- a/drivers/net/phy/dp83867.c
 +++ b/drivers/net/phy/dp83867.c
 @@ -23,6 +23,8 @@
  #define MII_DP83867_ISR		0x13
  #define DP83867_CTRL		0x1f
  #define DP83867_CFG3		0x1e
-+#define DP83867_CFG3_FASTLINK   (BIT(15))
-+#define DP83867_CFG3_FAST_AUT_MDIX  (BIT(8))
++#define DP83867_CFG3_FASTLINK	(BIT(15))
++#define DP83867_CFG3_FAST_AUT_MDIX	(BIT(8))
  
  /* Extended Registers */
  #define DP83867_CFG4            0x0031
@@ -52,22 +38,22 @@ index 3aa1ae211f5f..d03db6405499 100644
  		phy_write(phydev, DP83867_CFG3, val);
  #if (!defined(CONFIG_ARCH_SC58X)) && (!defined(CONFIG_ARCH_SC57X))
  	}
-+         /*Fast Auto MDIX is enabled for faster link up*/
-+        val = phy_read(phydev, DP83867_CFG3);
-+        val |= (DP83867_CFG3_FASTLINK | DP83867_CFG3_FAST_AUT_MDIX);
-+        phy_write(phydev, DP83867_CFG3, val);
++	/* Fast Auto MDIX is enabled for faster link up*/
++	val = phy_read(phydev, DP83867_CFG3);
++	val |= (DP83867_CFG3_FASTLINK | DP83867_CFG3_FAST_AUT_MDIX);
++	phy_write(phydev, DP83867_CFG3, val);
  #endif
  	if (dp83867->port_mirroring != DP83867_PORT_MIRROING_KEEP)
  		dp83867_config_port_mirroring(phydev);
 diff --git a/drivers/net/phy/phy.c b/drivers/net/phy/phy.c
-index 105d389b58e7..0598fec97ca7 100644
+index 105d389b58e7..77db6a3f1dde 100644
 --- a/drivers/net/phy/phy.c
 +++ b/drivers/net/phy/phy.c
 @@ -951,8 +951,9 @@ void phy_state_machine(struct work_struct *work)
  	 * called from phy_disconnect() synchronously.
  	 */
  	mutex_lock(&phydev->lock);
-+	/* Set the polling interval to 20msec*/
++	/* set the polling interval to 20msec*/
  	if (phy_polling_mode(phydev) && phy_is_started(phydev))
 -		phy_queue_state_machine(phydev, PHY_STATE_TIME);
 +		phy_queue_state_machine(phydev, PHY_STATE_TIME/50);
@@ -75,7 +61,7 @@ index 105d389b58e7..0598fec97ca7 100644
  }
  
 diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
-index adb66a2fae18..76e64f1b5ca2 100644
+index adb66a2fae18..dc9dcfd3af42 100644
 --- a/drivers/net/phy/phy_device.c
 +++ b/drivers/net/phy/phy_device.c
 @@ -596,14 +596,14 @@ struct phy_device *phy_device_create(struct mii_bus *bus, int addr, int phy_id,
@@ -83,7 +69,7 @@ index adb66a2fae18..76e64f1b5ca2 100644
  	mdiodev->device_remove = phy_mdio_device_remove;
  
 -	dev->speed = 0;
-+	dev->speed = SPEED_100; /*Changed to 100mbps from default 0*/
++	dev->speed = SPEED_100; /*Disabling Autonegotiation by default*/
  	dev->duplex = -1;
  	dev->pause = 0;
  	dev->asym_pause = 0;
@@ -91,7 +77,7 @@ index adb66a2fae18..76e64f1b5ca2 100644
  	dev->interface = PHY_INTERFACE_MODE_GMII;
  
 -	dev->autoneg = AUTONEG_ENABLE;
-+	dev->autoneg = AUTONEG_DISABLE; /*Disabling Autonegotiation by default*/
++	dev->autoneg = AUTONEG_DISABLE;
  
  	dev->is_c45 = is_c45;
  	dev->phy_id = phy_id;
