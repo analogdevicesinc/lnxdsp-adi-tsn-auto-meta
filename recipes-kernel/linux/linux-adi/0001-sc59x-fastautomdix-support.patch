@@ -1,5 +1,5 @@
 diff --git a/arch/arm/boot/dts/sc594-som-ezkit.dts b/arch/arm/boot/dts/sc594-som-ezkit.dts
-index 25acefc408c2..b571db1b5509 100644
+index 25acefc408c2..8927f2983b88 100644
 --- a/arch/arm/boot/dts/sc594-som-ezkit.dts
 +++ b/arch/arm/boot/dts/sc594-som-ezkit.dts
 @@ -51,14 +51,13 @@
@@ -7,7 +7,7 @@ index 25acefc408c2..b571db1b5509 100644
  		};
  
 -/* The button GPIO conflicts with OSPI0_D4 for this
-+/* The button GPIO conflicts with OSPI0_D4 for this */
++/* PB1 is used for Enable and Disable of Ethernet interface */
  		button0: button@0 {
  			compatible = "adi,button-led";
 -			en-pins = <&ssw1 1 GPIO_ACTIVE_LOW>;	/* PUSHBUTTON_EN
@@ -22,7 +22,7 @@ index 25acefc408c2..b571db1b5509 100644
  /* This also appears to interfere with the OSPI somehow...
     possible trace noise/interference?
 diff --git a/drivers/net/phy/dp83867.c b/drivers/net/phy/dp83867.c
-index 3aa1ae211f5f..d8a24bfb9928 100644
+index 3aa1ae211f5f..cb8f29e7d316 100644
 --- a/drivers/net/phy/dp83867.c
 +++ b/drivers/net/phy/dp83867.c
 @@ -23,6 +23,8 @@
@@ -34,14 +34,16 @@ index 3aa1ae211f5f..d8a24bfb9928 100644
  
  /* Extended Registers */
  #define DP83867_CFG4            0x0031
-@@ -424,6 +426,10 @@ static int dp83867_config_init(struct phy_device *phydev)
+@@ -424,6 +426,12 @@ static int dp83867_config_init(struct phy_device *phydev)
  		phy_write(phydev, DP83867_CFG3, val);
  #if (!defined(CONFIG_ARCH_SC58X)) && (!defined(CONFIG_ARCH_SC57X))
  	}
-+	/* Fast Auto MDIX is enabled for faster link up*/
-+	val = phy_read(phydev, DP83867_CFG3);
-+	val |= (DP83867_CFG3_FASTLINK | DP83867_CFG3_FAST_AUT_MDIX);
-+	phy_write(phydev, DP83867_CFG3, val);
++	if (phydev->speed == SPEED_100 && phydev->autoneg == 0) {
++		/* Fast Auto MDIX is enabled for faster link up*/
++		val = phy_read(phydev, DP83867_CFG3);
++		val |= (DP83867_CFG3_FASTLINK | DP83867_CFG3_FAST_AUT_MDIX);
++		phy_write(phydev, DP83867_CFG3, val);
++	}
  #endif
  	if (dp83867->port_mirroring != DP83867_PORT_MIRROING_KEEP)
  		dp83867_config_port_mirroring(phydev);
