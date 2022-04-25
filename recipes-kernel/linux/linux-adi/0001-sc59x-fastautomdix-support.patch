@@ -62,24 +62,3 @@ index 105d389b58e7..77db6a3f1dde 100644
  	mutex_unlock(&phydev->lock);
  }
  
-diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
-index adb66a2fae18..dc9dcfd3af42 100644
---- a/drivers/net/phy/phy_device.c
-+++ b/drivers/net/phy/phy_device.c
-@@ -596,14 +596,14 @@ struct phy_device *phy_device_create(struct mii_bus *bus, int addr, int phy_id,
- 	mdiodev->device_free = phy_mdio_device_free;
- 	mdiodev->device_remove = phy_mdio_device_remove;
- 
--	dev->speed = 0;
-+	dev->speed = SPEED_100; /*Disabling Autonegotiation by default*/
- 	dev->duplex = -1;
- 	dev->pause = 0;
- 	dev->asym_pause = 0;
- 	dev->link = 0;
- 	dev->interface = PHY_INTERFACE_MODE_GMII;
- 
--	dev->autoneg = AUTONEG_ENABLE;
-+	dev->autoneg = AUTONEG_DISABLE;
- 
- 	dev->is_c45 = is_c45;
- 	dev->phy_id = phy_id;
