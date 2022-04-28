@@ -1,0 +1,64 @@
+diff --git a/arch/arm/boot/dts/sc594-som-ezkit.dts b/arch/arm/boot/dts/sc594-som-ezkit.dts
+index 25acefc408c2..8927f2983b88 100644
+--- a/arch/arm/boot/dts/sc594-som-ezkit.dts
++++ b/arch/arm/boot/dts/sc594-som-ezkit.dts
+@@ -51,14 +51,13 @@
+ 			              <&ssw0 4 GPIO_ACTIVE_LOW>;	/* SPI2D2_D3_EN */
+ 		};
+ 
+-/* The button GPIO conflicts with OSPI0_D4 for this
++/* PB1 is used for Enable and Disable of Ethernet interface */
+ 		button0: button@0 {
+ 			compatible = "adi,button-led";
+-			en-pins = <&ssw1 1 GPIO_ACTIVE_LOW>;	/* PUSHBUTTON_EN
+-			button_gpio = <48>; /* PD_00
+-			led_gpio = <35>; /* PC_03 / LED9 / LED1_KIT
++			en-pins = <&ssw1 1 GPIO_ACTIVE_HIGH>;	/* PUSHBUTTON_EN */
++			button_gpio = <50>; /* PD_00 */
++			led_gpio = <35>; /* PC_03 / LED9 / LED1_KIT */
+ 		};
+-*/
+ 
+ /* This also appears to interfere with the OSPI somehow...
+    possible trace noise/interference?
+diff --git a/drivers/net/phy/dp83867.c b/drivers/net/phy/dp83867.c
+index 3aa1ae211f5f..cb8f29e7d316 100644
+--- a/drivers/net/phy/dp83867.c
++++ b/drivers/net/phy/dp83867.c
+@@ -23,6 +23,8 @@
+ #define MII_DP83867_ISR		0x13
+ #define DP83867_CTRL		0x1f
+ #define DP83867_CFG3		0x1e
++#define DP83867_CFG3_FASTLINK	(BIT(15))
++#define DP83867_CFG3_FAST_AUT_MDIX	(BIT(8))
+ 
+ /* Extended Registers */
+ #define DP83867_CFG4            0x0031
+@@ -424,6 +426,12 @@ static int dp83867_config_init(struct phy_device *phydev)
+ 		phy_write(phydev, DP83867_CFG3, val);
+ #if (!defined(CONFIG_ARCH_SC58X)) && (!defined(CONFIG_ARCH_SC57X))
+ 	}
++	if (phydev->speed == SPEED_100 && phydev->autoneg == 0) {
++		/* Fast Auto MDIX is enabled for faster link up*/
++		val = phy_read(phydev, DP83867_CFG3);
++		val |= (DP83867_CFG3_FASTLINK | DP83867_CFG3_FAST_AUT_MDIX);
++		phy_write(phydev, DP83867_CFG3, val);
++	}
+ #endif
+ 	if (dp83867->port_mirroring != DP83867_PORT_MIRROING_KEEP)
+ 		dp83867_config_port_mirroring(phydev);
+diff --git a/drivers/net/phy/phy.c b/drivers/net/phy/phy.c
+index 105d389b58e7..77db6a3f1dde 100644
+--- a/drivers/net/phy/phy.c
++++ b/drivers/net/phy/phy.c
+@@ -951,8 +951,9 @@ void phy_state_machine(struct work_struct *work)
+ 	 * called from phy_disconnect() synchronously.
+ 	 */
+ 	mutex_lock(&phydev->lock);
++	/* set the polling interval to 20msec*/
+ 	if (phy_polling_mode(phydev) && phy_is_started(phydev))
+-		phy_queue_state_machine(phydev, PHY_STATE_TIME);
++		phy_queue_state_machine(phydev, PHY_STATE_TIME/50);
+ 	mutex_unlock(&phydev->lock);
+ }
+ 
